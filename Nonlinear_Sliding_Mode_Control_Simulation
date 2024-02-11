@@ -1,0 +1,68 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+
+# Function to define system dynamics (highly nonlinear)
+def system_dynamics(x, t, u):
+    A = np.array([[0, 1], [-2, -3]])
+    B = np.array([0, 1])
+    nonlinear_effect = np.sin(x[0])
+    dxdt = A @ x + B * u + np.array([0, nonlinear_effect])
+    return dxdt
+
+# Nonlinear sliding surface function
+def nonlinear_sliding_surface(x, r):
+    # Calculate error and its derivative
+    e = x[0] - r[0]
+    de = x[1] - r[1]
+    # Nonlinear sliding surface
+    s = de + np.tanh(e)
+    return s
+
+# Nonlinear sliding mode controller with Lyapunov function
+def nonlinear_sliding_mode_control(x, r, k):
+    s = nonlinear_sliding_surface(x, r)
+    # Control action with Lyapunov-based adjustment
+    u = -k * np.sign(s)
+    return u
+
+# Time vector
+t = np.linspace(0, 10, 1000)
+
+# Reference signal (desired trajectory)
+r = np.vstack([np.sin(t), np.cos(t)]).T  # Example reference trajectory
+
+# Initial conditions
+x0 = np.array([0, 0])
+
+# Simulation
+x = np.zeros((len(t), 2))
+u = np.zeros_like(t)
+k = 4.0  # Control gain
+
+for i in range(1, len(t)):
+    dt = t[i] - t[i - 1]
+    u[i] = nonlinear_sliding_mode_control(x[i - 1], r[i], k)
+    x[i] = x[i - 1] + dt * system_dynamics(x[i - 1], t[i], u[i])
+
+# Plotting
+plt.figure(figsize=(12, 8))
+
+# Plot system response and reference
+plt.subplot(2, 1, 1)
+plt.plot(t, x[:,0], 'b-', label='System Response')
+plt.plot(t, r[:,0], 'r--', label='Reference Trajectory')
+plt.ylabel('Position')
+plt.title('Nonlinear Sliding Mode Control Response')
+plt.legend()
+
+# Plot control signal
+plt.subplot(2, 1, 2)
+plt.plot(t, u, 'k-', label='Control Signal')
+plt.xlabel('Time')
+plt.ylabel('Control')
+plt.title('Control Signal')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
