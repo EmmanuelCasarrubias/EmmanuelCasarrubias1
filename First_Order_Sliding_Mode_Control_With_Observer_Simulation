@@ -1,0 +1,76 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+
+# Function to define system dynamics
+def system_dynamics(x, t, u):
+    A = np.array([[0, 1], [-2, -3]])  # System matrix
+    B = np.array([0, 1])             # Input matrix
+    dxdt = A @ x + B * u
+    return dxdt
+
+# Levant Observer function
+def levant_observer(z, t, y, u, alpha):
+    L = np.array([alpha, alpha**1.5])  # Observer gains
+    dzdt = L * (y - z[0]) + np.array([z[1], u])
+    return dzdt
+
+# Sliding mode controller
+def sliding_mode_control(x_hat, lambda_, k):
+    s = lambda_ * x_hat[0] + x_hat[1]
+    control = -k * np.sign(s)
+    return control
+
+# Time vector
+t = np.linspace(0, 10, 1000)
+
+# Input signal (step input)
+u = np.ones_like(t)
+
+# Initial conditions
+x0 = np.array([0, 0])
+z0 = np.array([0, 0])
+
+# System simulation
+x = odeint(system_dynamics, x0, t, args=(1,))
+
+# Observer simulation with adjusted gains
+alpha = 10  # Increased observer gain
+z = np.zeros_like(x)
+for i in range(1, len(t)):
+    dt = t[i] - t[i - 1]
+    z[i] = z[i - 1] + dt * levant_observer(z[i - 1], t[i], x[i, 0], u[i], alpha)
+
+# Control signal with adjusted parameters
+lambda_ = 2.0  # Adjusted sliding surface slope
+k = 2.0       # Adjusted control gain
+control = np.array([sliding_mode_control(z_hat, lambda_, k) for z_hat in z])
+
+# Plotting
+plt.figure(figsize=(12, 8))
+
+# Plot actual vs estimated state 1
+plt.subplot(3, 1, 1)
+plt.plot(t, x[:,0], 'b-', label='Actual State 1')
+plt.plot(t, z[:,0], 'r--', label='Estimated State 1')
+plt.ylabel('State 1')
+plt.title('Actual vs Estimated States')
+plt.legend()
+
+# Plot actual vs estimated state 2
+plt.subplot(3, 1, 2)
+plt.plot(t, x[:,1], 'b-', label='Actual State 2')
+plt.plot(t, z[:,1], 'r--', label='Estimated State 2')
+plt.ylabel('State 2')
+plt.legend()
+
+# Plot control signal
+plt.subplot(3, 1, 3)
+plt.plot(t, control, 'k-', label='Control Signal')
+plt.xlabel('Time')
+plt.ylabel('Control')
+plt.title('Control Signal')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
