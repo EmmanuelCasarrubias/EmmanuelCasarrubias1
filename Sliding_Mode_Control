@@ -1,0 +1,79 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+
+# Function to define system dynamics
+def system_dynamics(x, t, u):
+    A = np.array([[0, 1], [-2, -3]])  # System matrix
+    B = np.array([0, 1])             # Input matrix
+    dxdt = A @ x + B * u
+    return dxdt
+
+# Function for the reference model
+def reference_model(r, t):
+    # Second-order reference model dynamics
+    A_ref = np.array([[0, 1], [-1, -1.5]])
+    B_ref = np.array([0, 1])
+    drdt = A_ref @ r
+    return drdt
+
+# Adaptive sliding mode controller
+def adaptive_sliding_mode_control(x, r, t, u_prev):
+    # Controller parameters - these can be adapted as needed
+    k = 2.0  # Control gain
+    lambda_ = 2.0  # Sliding surface slope
+    
+    # Sliding surface
+    s = lambda_ * (x[0] - r[0]) + (x[1] - r[1])
+    
+    # Control law
+    u = -k * np.sign(s) + u_prev
+    return u
+
+# Time vector
+t = np.linspace(0, 10, 1000)
+
+# Initial conditions
+x0 = np.array([0, 0])
+r0 = np.array([1, 0])  # Desired initial condition for reference model
+
+# Simulate reference model
+r = odeint(reference_model, r0, t)
+
+# Simulate system with adaptive sliding mode control
+x = np.zeros((len(t), 2))
+u = np.zeros_like(t)
+for i in range(1, len(t)):
+    dt = t[i] - t[i - 1]
+    u[i] = adaptive_sliding_mode_control(x[i - 1], r[i], t[i], u[i - 1])
+    x[i] = x[i - 1] + dt * system_dynamics(x[i - 1], t[i], u[i])
+
+# Plotting
+plt.figure(figsize=(12, 8))
+
+# Plot system response vs reference model
+plt.subplot(3, 1, 1)
+plt.plot(t, x[:,0], 'b-', label='System Response')
+plt.plot(t, r[:,0], 'r--', label='Reference Model')
+plt.ylabel('Position')
+plt.title('System Response vs Reference Model')
+plt.legend()
+
+# Plot control signal
+plt.subplot(3, 1, 2)
+plt.plot(t, u, 'k-', label='Control Signal')
+plt.ylabel('Control')
+plt.title('Control Signal')
+plt.legend()
+
+# Plot error between system response and reference model
+plt.subplot(3, 1, 3)
+error = x[:,0] - r[:,0]
+plt.plot(t, error, 'g-', label='Error')
+plt.xlabel('Time')
+plt.ylabel('Error')
+plt.title('Error between System Response and Reference Model')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
