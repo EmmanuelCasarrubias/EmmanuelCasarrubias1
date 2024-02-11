@@ -1,0 +1,95 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import signal
+
+# Explanation
+"""
+This Python code generates a plot of a second-order system controlled by a Higher-Order Sliding Mode Controller with a Dynamic Sliding Surface. The dynamic sliding surface evolves over time, providing an advanced control strategy for complex systems.
+The plot consists of four subplots:
+1. The system response with delay.
+2. The error signal.
+3. The control signal using a Higher-Order Sliding Mode Controller with Dynamic Sliding Surface.
+4. The evolution of dynamic gain.
+Each subplot is annotated with elegant labels and uses stylish colors.
+"""
+
+# System parameters
+wn = 2.0  # Natural frequency
+zeta = 0.7  # Damping ratio
+delay = 0.5  # Delay in the system response
+
+# Controller parameters
+alpha = 1.0  # Initial controller gain
+lambda_ = 1.0  # Sliding mode controller parameter
+beta = 0.5  # Parameter for dynamic sliding surface
+
+# Time vector
+t = np.linspace(0, 10, 1000)
+
+# Input signal (step input)
+u = np.ones_like(t)
+
+# System response with delay
+num = [wn**2]
+den = [1, 2*zeta*wn, wn**2]
+system = signal.lti(num, den)
+t, y, x = signal.lsim(system, u, t)
+error = u - np.roll(y, int(delay * len(t)))
+
+# Higher-Order Sliding Mode Control with Dynamic Sliding Surface
+control = np.zeros_like(t)
+s = np.zeros_like(t)
+gain_evolution = np.zeros_like(t)
+dynamic_surface = np.zeros_like(t)
+
+for i in range(1, len(t)):
+    # Dynamic sliding surface
+    dynamic_surface[i] = lambda_ * error[i] + beta * (error[i] - error[i-1])
+
+    # Sliding mode control
+    s[i] = dynamic_surface[i] + np.sign(dynamic_surface[i])
+    control[i] = alpha * s[i]
+    
+    # Dynamic gain adjustment
+    if abs(s[i]) > 0.5:
+        alpha = 2.0
+    else:
+        alpha = 1.0
+    
+    gain_evolution[i] = alpha
+
+# Create subplots
+fig, axs = plt.subplots(4, 1, figsize=(8, 8))
+
+# Plot system response with delay
+axs[0].plot(t, y, label='System Response with Delay', color='blue')
+axs[0].set_ylabel('System Response (y)')
+axs[0].set_title('System Response with Delay')
+axs[0].legend()
+
+# Plot error signal
+axs[1].plot(t, error, label='Error Signal', color='green')
+axs[1].set_ylabel('Error Signal (e)')
+axs[1].set_title('Error Signal')
+axs[1].legend()
+
+# Plot control signal with Higher-Order SMC and Dynamic Surface
+axs[2].plot(t, control, label='Control Signal (HOSMC with Dynamic Surface)', color='red')
+axs[2].set_ylabel('Control Signal (u)')
+axs[2].set_title('Control Signal (HOSMC with Dynamic Surface)')
+axs[2].legend()
+
+# Plot evolution of dynamic gain
+axs[3].plot(t, gain_evolution, label='Dynamic Gain', color='purple')
+axs[3].set_xlabel('Time')
+axs[3].set_ylabel('Dynamic Gain')
+axs[3].set_title('Evolution of Dynamic Gain')
+axs[3].legend()
+
+# Add annotations
+for ax in axs:
+    ax.grid(True)
+    ax.set_xlim(0, 10)
+
+plt.tight_layout()
+plt.show()
